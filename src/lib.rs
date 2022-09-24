@@ -420,7 +420,7 @@ pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{Datelike, Days, Month, Months, Timelike, Weekday};
     #[doc(no_inline)]
-    pub use crate::{DaysDelta, TimeDelta};
+    pub use crate::{DaysDelta, MonthsDelta, TimeDelta};
     #[doc(no_inline)]
     pub use crate::{FixedOffset, Utc};
     #[doc(no_inline)]
@@ -463,7 +463,7 @@ mod weekday;
 pub use weekday::{ParseWeekdayError, Weekday};
 
 mod month;
-pub use month::{Month, Months, ParseMonthError};
+pub use month::{Month, Months, MonthsDelta, ParseMonthError};
 
 mod traits;
 pub use traits::{Datelike, Timelike};
