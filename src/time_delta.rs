@@ -78,6 +78,39 @@ impl TimeDelta {
             TimeDelta::Backwards(d) => *d,
         }
     }
+
+    /// Checks whether the `TimeDelta` is in a forwards direction
+    pub fn is_forwards(&self) -> bool {
+        // TODO: use matches!. Currently avoiding due to 1.38 MSRV
+        if let TimeDelta::Forwards(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Checks whether the `TimeDelta` is in a backwards direction
+    pub fn is_backwards(&self) -> bool {
+        // TODO: use matches!. Currently avoiding due to 1.38 MSRV
+        if let TimeDelta::Backwards(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Checks whether two `TimeDelta`s are in the same direction
+    pub fn is_same_direction(&self, other: TimeDelta) -> bool {
+        self.is_forwards() && other.is_forwards() || self.is_backwards() && other.is_backwards()
+    }
+
+    /// Returns a constructor for the direction of the `TimeDelta`
+    pub fn direction(&self) -> fn(Duration) -> TimeDelta {
+        match self {
+            TimeDelta::Forwards(_) => TimeDelta::Forwards,
+            TimeDelta::Backwards(_) => TimeDelta::Backwards,
+        }
+    }
 }
 
 impl PartialEq<TimeDelta> for TimeDelta {
@@ -98,6 +131,20 @@ impl Eq for TimeDelta {}
 impl From<Duration> for TimeDelta {
     fn from(s: Duration) -> Self {
         TimeDelta::Forwards(s)
+    }
+}
+
+// we `impl` add as it is useful within at least this codebase
+impl Add<TimeDelta> for TimeDelta {
+    type Output = TimeDelta;
+    fn add(self, rhs: TimeDelta) -> Self::Output {
+        if self.is_same_direction(rhs) {
+            self.direction()(self.abs() + rhs.abs())
+        } else if self.abs() > rhs.abs() {
+            self.direction()(self.abs() - rhs.abs())
+        } else {
+            rhs.direction()(rhs.abs() - self.abs())
+        }
     }
 }
 

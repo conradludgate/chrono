@@ -8,6 +8,7 @@ use core::borrow::Borrow;
 use core::convert::{TryFrom, TryInto};
 use core::hash::{Hash, Hasher};
 use core::ops::{Add, AddAssign, RangeInclusive, Sub, SubAssign};
+use core::time::Duration;
 use core::{fmt, str};
 
 use num_integer::div_mod_floor;
@@ -20,7 +21,7 @@ use crate::format::{parse, ParseError, ParseResult, Parsed, StrftimeItems};
 use crate::format::{Item, Numeric, Pad};
 use crate::month::Months;
 use crate::naive::{IsoWeek, NaiveDateTime, NaiveTime};
-use crate::{Datelike, OldTimeDelta, Weekday};
+use crate::{Datelike, OldTimeDelta, TimeDelta, Weekday};
 
 use super::internals::{self, DateImpl, Mdf, Of, YearFlags};
 use super::isoweek;
@@ -129,6 +130,10 @@ impl Days {
     pub fn new(num: u32) -> Self {
         Self(num)
     }
+
+    pub(crate) fn duration(self) -> Duration {
+        Duration::new(86400 * u64::from(self.0), 0)
+    }
 }
 
 /// A difference in a number of days, either forwards or backwards.
@@ -166,6 +171,15 @@ impl DaysDelta {
         match self {
             DaysDelta::Backwards(d) => d,
             DaysDelta::Forwards(d) => d,
+        }
+    }
+}
+
+impl From<DaysDelta> for TimeDelta {
+    fn from(delta: DaysDelta) -> Self {
+        match delta {
+            DaysDelta::Backwards(d) => TimeDelta::Backwards(d.duration()),
+            DaysDelta::Forwards(d) => TimeDelta::Forwards(d.duration()),
         }
     }
 }
