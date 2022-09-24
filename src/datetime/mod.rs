@@ -32,7 +32,7 @@ use crate::naive::{Days, IsoWeek, NaiveDate, NaiveDateTime, NaiveTime};
 #[cfg(feature = "clock")]
 use crate::offset::Local;
 use crate::offset::{FixedOffset, Offset, TimeZone, Utc};
-use crate::{Date, Datelike, Months, OldTimeDelta, TimeDelta, Timelike, Weekday};
+use crate::{Date, Datelike, Months, TimeDelta, Timelike, Weekday};
 
 /// documented at re-export site
 #[cfg(feature = "serde")]
@@ -319,16 +319,6 @@ impl<Tz: TimeZone> DateTime<Tz> {
     ///
     /// Returns `None` when it will result in overflow.
     #[inline]
-    pub fn checked_add_signed(self, rhs: OldTimeDelta) -> Option<DateTime<Tz>> {
-        let datetime = self.datetime.checked_add_signed(rhs)?;
-        let tz = self.timezone();
-        Some(tz.from_utc_datetime(&datetime))
-    }
-
-    /// Adds given `Duration` to the current date and time.
-    ///
-    /// Returns `None` when it will result in overflow.
-    #[inline]
     pub fn checked_add(self, rhs: Duration) -> Option<DateTime<Tz>> {
         let datetime = self.datetime.checked_add(rhs)?;
         let tz = self.timezone();
@@ -346,16 +336,6 @@ impl<Tz: TimeZone> DateTime<Tz> {
             .checked_add_months(rhs)?
             .and_local_timezone(Tz::from_offset(&self.offset))
             .single()
-    }
-
-    /// Subtracts given `Duration` from the current date and time.
-    ///
-    /// Returns `None` when it will result in overflow.
-    #[inline]
-    pub fn checked_sub_signed(self, rhs: OldTimeDelta) -> Option<DateTime<Tz>> {
-        let datetime = self.datetime.checked_sub_signed(rhs)?;
-        let tz = self.timezone();
-        Some(tz.from_utc_datetime(&datetime))
     }
 
     /// Subtracts given `Duration` from the current date and time.
@@ -399,13 +379,6 @@ impl<Tz: TimeZone> DateTime<Tz> {
             .checked_sub_days(days)?
             .and_local_timezone(TimeZone::from_offset(&self.offset))
             .single()
-    }
-
-    /// Subtracts another `DateTime` from the current date and time.
-    /// This does not overflow or underflow at all.
-    #[inline]
-    pub fn signed_duration_since<Tz2: TimeZone>(self, rhs: DateTime<Tz2>) -> OldTimeDelta {
-        self.datetime.signed_duration_since(rhs.datetime)
     }
 
     /// Subtracts another `DateTime` from the current date and time.
@@ -994,31 +967,12 @@ impl<Tz: TimeZone> hash::Hash for DateTime<Tz> {
     }
 }
 
-impl<Tz: TimeZone> Add<OldTimeDelta> for DateTime<Tz> {
-    type Output = DateTime<Tz>;
-
-    #[inline]
-    fn add(self, rhs: OldTimeDelta) -> DateTime<Tz> {
-        self.checked_add_signed(rhs).expect("`DateTime + Duration` overflowed")
-    }
-}
-
 impl<Tz: TimeZone> Add<Duration> for DateTime<Tz> {
     type Output = DateTime<Tz>;
 
     #[inline]
     fn add(self, rhs: Duration) -> DateTime<Tz> {
         self.checked_add(rhs).expect("`DateTime + Duration` overflowed")
-    }
-}
-
-impl<Tz: TimeZone> AddAssign<OldTimeDelta> for DateTime<Tz> {
-    #[inline]
-    fn add_assign(&mut self, rhs: OldTimeDelta) {
-        let datetime =
-            self.datetime.checked_add_signed(rhs).expect("`DateTime + Duration` overflowed");
-        let tz = self.timezone();
-        *self = tz.from_utc_datetime(&datetime);
     }
 }
 
@@ -1036,25 +990,6 @@ impl<Tz: TimeZone> Add<Months> for DateTime<Tz> {
 
     fn add(self, rhs: Months) -> Self::Output {
         self.checked_add_months(rhs).unwrap()
-    }
-}
-
-impl<Tz: TimeZone> Sub<OldTimeDelta> for DateTime<Tz> {
-    type Output = DateTime<Tz>;
-
-    #[inline]
-    fn sub(self, rhs: OldTimeDelta) -> DateTime<Tz> {
-        self.checked_sub_signed(rhs).expect("`DateTime - Duration` overflowed")
-    }
-}
-
-impl<Tz: TimeZone> SubAssign<OldTimeDelta> for DateTime<Tz> {
-    #[inline]
-    fn sub_assign(&mut self, rhs: OldTimeDelta) {
-        let datetime =
-            self.datetime.checked_sub_signed(rhs).expect("`DateTime - Duration` overflowed");
-        let tz = self.timezone();
-        *self = tz.from_utc_datetime(&datetime)
     }
 }
 
@@ -1081,15 +1016,6 @@ impl<Tz: TimeZone> Sub<Months> for DateTime<Tz> {
 
     fn sub(self, rhs: Months) -> Self::Output {
         self.checked_sub_months(rhs).unwrap()
-    }
-}
-
-impl<Tz: TimeZone> Sub<DateTime<Tz>> for DateTime<Tz> {
-    type Output = OldTimeDelta;
-
-    #[inline]
-    fn sub(self, rhs: DateTime<Tz>) -> OldTimeDelta {
-        self.signed_duration_since(rhs)
     }
 }
 

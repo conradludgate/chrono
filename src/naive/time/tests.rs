@@ -1,5 +1,5 @@
 use super::NaiveTime;
-use crate::{Days, OldTimeDelta, TimeDelta, Timelike};
+use crate::{Days, TimeDelta, Timelike};
 use core::time::Duration;
 use std::u32;
 
@@ -85,36 +85,6 @@ fn test_time_hms() {
 }
 
 #[test]
-fn test_time_add() {
-    macro_rules! check {
-        ($lhs:expr, $rhs:expr, $sum:expr) => {{
-            assert_eq!($lhs + $rhs, $sum);
-            //assert_eq!($rhs + $lhs, $sum);
-        }};
-    }
-
-    let hmsm = |h, m, s, ms| NaiveTime::from_hms_milli_opt(h, m, s, ms).unwrap();
-
-    check!(hmsm(3, 5, 7, 900), OldTimeDelta::zero(), hmsm(3, 5, 7, 900));
-    check!(hmsm(3, 5, 7, 900), OldTimeDelta::milliseconds(100), hmsm(3, 5, 8, 0));
-    check!(hmsm(3, 5, 7, 1_300), OldTimeDelta::milliseconds(-1800), hmsm(3, 5, 6, 500));
-    check!(hmsm(3, 5, 7, 1_300), OldTimeDelta::milliseconds(-800), hmsm(3, 5, 7, 500));
-    check!(hmsm(3, 5, 7, 1_300), OldTimeDelta::milliseconds(-100), hmsm(3, 5, 7, 1_200));
-    check!(hmsm(3, 5, 7, 1_300), OldTimeDelta::milliseconds(100), hmsm(3, 5, 7, 1_400));
-    check!(hmsm(3, 5, 7, 1_300), OldTimeDelta::milliseconds(800), hmsm(3, 5, 8, 100));
-    check!(hmsm(3, 5, 7, 1_300), OldTimeDelta::milliseconds(1800), hmsm(3, 5, 9, 100));
-    check!(hmsm(3, 5, 7, 900), OldTimeDelta::seconds(86399), hmsm(3, 5, 6, 900)); // overwrap
-    check!(hmsm(3, 5, 7, 900), OldTimeDelta::seconds(-86399), hmsm(3, 5, 8, 900));
-    check!(hmsm(3, 5, 7, 900), OldTimeDelta::days(12345), hmsm(3, 5, 7, 900));
-    check!(hmsm(3, 5, 7, 1_300), OldTimeDelta::days(1), hmsm(3, 5, 7, 300));
-    check!(hmsm(3, 5, 7, 1_300), OldTimeDelta::days(-1), hmsm(3, 5, 8, 300));
-
-    // regression tests for #37
-    check!(hmsm(0, 0, 0, 0), OldTimeDelta::milliseconds(-990), hmsm(23, 59, 59, 10));
-    check!(hmsm(0, 0, 0, 0), OldTimeDelta::milliseconds(-9990), hmsm(23, 59, 50, 10));
-}
-
-#[test]
 fn test_time_add_duration() {
     macro_rules! check {
         ($lhs:expr, $rhs:expr, $sum:expr) => {{
@@ -154,34 +124,6 @@ fn test_time_add_duration() {
 }
 
 #[test]
-fn test_time_overflowing_add() {
-    let hmsm = |h, m, s, ms| NaiveTime::from_hms_milli_opt(h, m, s, ms).unwrap();
-
-    assert_eq!(
-        hmsm(3, 4, 5, 678).overflowing_add_signed(OldTimeDelta::hours(11)),
-        (hmsm(14, 4, 5, 678), 0)
-    );
-    assert_eq!(
-        hmsm(3, 4, 5, 678).overflowing_add_signed(OldTimeDelta::hours(23)),
-        (hmsm(2, 4, 5, 678), 86_400)
-    );
-    assert_eq!(
-        hmsm(3, 4, 5, 678).overflowing_add_signed(OldTimeDelta::hours(-7)),
-        (hmsm(20, 4, 5, 678), -86_400)
-    );
-
-    // overflowing_add_signed with leap seconds may be counter-intuitive
-    assert_eq!(
-        hmsm(3, 4, 5, 1_678).overflowing_add_signed(OldTimeDelta::days(1)),
-        (hmsm(3, 4, 5, 678), 86_400)
-    );
-    assert_eq!(
-        hmsm(3, 4, 5, 1_678).overflowing_add_signed(OldTimeDelta::days(-1)),
-        (hmsm(3, 4, 6, 678), -86_400)
-    );
-}
-
-#[test]
 fn test_time_overflowing_add_duration() {
     let hmsm = |h, m, s, ms| NaiveTime::from_hms_milli_opt(h, m, s, ms).unwrap();
 
@@ -213,26 +155,6 @@ fn test_time_overflowing_sub() {
         hmsm(3, 4, 5, 1_678).checked_overflowing_sub(Duration::from_secs(24 * 60 * 60)),
         Some((hmsm(3, 4, 6, 678), Days::new(1)))
     );
-}
-
-#[test]
-fn test_time_addassignment() {
-    let hms = |h, m, s| NaiveTime::from_hms_opt(h, m, s).unwrap();
-    let mut time = hms(12, 12, 12);
-    time += OldTimeDelta::hours(10);
-    assert_eq!(time, hms(22, 12, 12));
-    time += OldTimeDelta::hours(10);
-    assert_eq!(time, hms(8, 12, 12));
-}
-
-#[test]
-fn test_time_subassignment() {
-    let hms = |h, m, s| NaiveTime::from_hms_opt(h, m, s).unwrap();
-    let mut time = hms(12, 12, 12);
-    time -= OldTimeDelta::hours(10);
-    assert_eq!(time, hms(2, 12, 12));
-    time -= OldTimeDelta::hours(10);
-    assert_eq!(time, hms(16, 12, 12));
 }
 
 #[test]

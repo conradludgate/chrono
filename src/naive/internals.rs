@@ -108,6 +108,7 @@ pub(super) fn cycle_to_yo(cycle: u32) -> (u32, u32) {
     (year_mod_400, ordinal0 + 1)
 }
 
+#[allow(dead_code)]
 pub(super) fn yo_to_cycle(year_mod_400: u32, ordinal: u32) -> u32 {
     year_mod_400 * 365 + u32::from(YEAR_DELTAS[year_mod_400 as usize]) + ordinal - 1
 }
