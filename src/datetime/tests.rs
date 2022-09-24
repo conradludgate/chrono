@@ -1,3 +1,4 @@
+use core::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::DateTime;
@@ -7,7 +8,7 @@ use crate::offset::Local;
 use crate::offset::{FixedOffset, TimeZone, Utc};
 #[cfg(feature = "clock")]
 use crate::Datelike;
-use crate::OldTimeDelta;
+use crate::{OldTimeDelta, TimeDelta};
 
 #[test]
 fn test_datetime_offset() {
@@ -75,6 +76,79 @@ fn test_datetime_offset() {
     assert_eq!(
         dt.signed_duration_since(edt.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(10, 11, 12).unwrap()),
         OldTimeDelta::seconds(-7 * 3600 - 3 * 60 - 3)
+    );
+
+    assert_eq!(*Utc.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap().offset(), Utc);
+    assert_eq!(*edt.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap().offset(), edt);
+    assert!(*edt.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap().offset() != est);
+}
+
+#[test]
+fn test_datetime_offset_duration() {
+    let est = FixedOffset::west_opt(5 * 60 * 60).unwrap();
+    let edt = FixedOffset::west_opt(4 * 60 * 60).unwrap();
+    let kst = FixedOffset::east_opt(9 * 60 * 60).unwrap();
+
+    assert_eq!(
+        format!("{}", Utc.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap()),
+        "2014-05-06 07:08:09 UTC"
+    );
+    assert_eq!(
+        format!("{}", edt.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap()),
+        "2014-05-06 07:08:09 -04:00"
+    );
+    assert_eq!(
+        format!("{}", kst.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap()),
+        "2014-05-06 07:08:09 +09:00"
+    );
+    assert_eq!(
+        format!("{:?}", Utc.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap()),
+        "2014-05-06T07:08:09Z"
+    );
+    assert_eq!(
+        format!("{:?}", edt.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap()),
+        "2014-05-06T07:08:09-04:00"
+    );
+    assert_eq!(
+        format!("{:?}", kst.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap()),
+        "2014-05-06T07:08:09+09:00"
+    );
+
+    // edge cases
+    assert_eq!(
+        format!("{:?}", Utc.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(0, 0, 0).unwrap()),
+        "2014-05-06T00:00:00Z"
+    );
+    assert_eq!(
+        format!("{:?}", edt.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(0, 0, 0).unwrap()),
+        "2014-05-06T00:00:00-04:00"
+    );
+    assert_eq!(
+        format!("{:?}", kst.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(0, 0, 0).unwrap()),
+        "2014-05-06T00:00:00+09:00"
+    );
+    assert_eq!(
+        format!("{:?}", Utc.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(23, 59, 59).unwrap()),
+        "2014-05-06T23:59:59Z"
+    );
+    assert_eq!(
+        format!("{:?}", edt.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(23, 59, 59).unwrap()),
+        "2014-05-06T23:59:59-04:00"
+    );
+    assert_eq!(
+        format!("{:?}", kst.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(23, 59, 59).unwrap()),
+        "2014-05-06T23:59:59+09:00"
+    );
+
+    let dt = Utc.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap();
+    assert_eq!(dt, edt.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(3, 8, 9).unwrap());
+    assert_eq!(
+        dt + Duration::from_secs(3600 + 60 + 1),
+        Utc.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(8, 9, 10).unwrap()
+    );
+    assert_eq!(
+        dt.duration_since(edt.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(10, 11, 12).unwrap()),
+        TimeDelta::Backwards(Duration::from_secs(7 * 3600 + 3 * 60 + 3))
     );
 
     assert_eq!(*Utc.ymd_opt(2014, 5, 6).unwrap().and_hms_opt(7, 8, 9).unwrap().offset(), Utc);
@@ -362,8 +436,6 @@ fn test_subsecond_part() {
 #[test]
 #[cfg(not(target_os = "windows"))]
 fn test_from_system_time() {
-    use std::time::Duration;
-
     let epoch = Utc.ymd_opt(1970, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
     let nanos = 999_999_999;
 
@@ -411,8 +483,6 @@ fn test_from_system_time() {
 #[test]
 #[cfg(target_os = "windows")]
 fn test_from_system_time() {
-    use std::time::Duration;
-
     let nanos = 999_999_000;
 
     let epoch = Utc.ymd_opt(1970, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -530,6 +600,27 @@ fn test_years_elapsed() {
 }
 
 #[test]
+#[cfg(feature = "clock")]
+fn test_years_elapsed_duration() {
+    const WEEKS_PER_YEAR: f32 = 52.1775;
+
+    // This is always at least one year because 1 year = 52.1775 weeks.
+    let one_year_ago = Utc::today().and_hms_opt(0, 0, 0).unwrap()
+        - Duration::from_secs(7 * 24 * 60 * 60 * (WEEKS_PER_YEAR * 1.5).ceil() as u64);
+    // A bit more than 2 years.
+    let two_year_ago = Utc::today().and_hms_opt(0, 0, 0).unwrap()
+        - Duration::from_secs(7 * 24 * 60 * 60 * (WEEKS_PER_YEAR * 2.5).ceil() as u64);
+
+    assert_eq!(Utc::today().and_hms_opt(0, 0, 0).unwrap().years_since(one_year_ago), Some(1));
+    assert_eq!(Utc::today().and_hms_opt(0, 0, 0).unwrap().years_since(two_year_ago), Some(2));
+
+    // If the given DateTime is later than now, the function will always return 0.
+    let future =
+        Utc::today().and_hms_opt(0, 0, 0).unwrap() + Duration::from_secs(7 * 24 * 60 * 60 * 12);
+    assert_eq!(Utc::today().and_hms_opt(0, 0, 0).unwrap().years_since(future), None);
+}
+
+#[test]
 fn test_datetime_add_assign() {
     let naivedatetime = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
     let datetime = DateTime::<Utc>::from_utc(naivedatetime, Utc);
@@ -552,6 +643,28 @@ fn test_datetime_add_assign() {
 }
 
 #[test]
+fn test_datetime_add_assign_duration() {
+    let naivedatetime = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+    let datetime = DateTime::<Utc>::from_utc(naivedatetime, Utc);
+    let mut datetime_add = datetime;
+
+    datetime_add += Duration::from_secs(60);
+    assert_eq!(datetime_add, datetime + Duration::from_secs(60));
+
+    let timezone = FixedOffset::east_opt(60 * 60).unwrap();
+    let datetime = datetime.with_timezone(&timezone);
+    let datetime_add = datetime_add.with_timezone(&timezone);
+
+    assert_eq!(datetime_add, datetime + Duration::from_secs(60));
+
+    let timezone = FixedOffset::west_opt(2 * 60 * 60).unwrap();
+    let datetime = datetime.with_timezone(&timezone);
+    let datetime_add = datetime_add.with_timezone(&timezone);
+
+    assert_eq!(datetime_add, datetime + Duration::from_secs(60));
+}
+
+#[test]
 #[cfg(feature = "clock")]
 fn test_datetime_add_assign_local() {
     let naivedatetime = NaiveDate::from_ymd_opt(2022, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -563,6 +676,21 @@ fn test_datetime_add_assign_local() {
     for i in 1..=365 {
         datetime_add += OldTimeDelta::days(1);
         assert_eq!(datetime_add, datetime + OldTimeDelta::days(i))
+    }
+}
+
+#[test]
+#[cfg(feature = "clock")]
+fn test_datetime_add_assign_local_duration() {
+    let naivedatetime = NaiveDate::from_ymd_opt(2022, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+
+    let datetime = Local.from_utc_datetime(&naivedatetime);
+    let mut datetime_add = Local.from_utc_datetime(&naivedatetime);
+
+    // ensure we cross a DST transition
+    for i in 1..=365 {
+        datetime_add += Duration::from_secs(24 * 60 * 60);
+        assert_eq!(datetime_add, datetime + Duration::from_secs(24 * 60 * 60 * i))
     }
 }
 
@@ -589,6 +717,28 @@ fn test_datetime_sub_assign() {
 }
 
 #[test]
+fn test_datetime_sub_assign_duration() {
+    let naivedatetime = NaiveDate::from_ymd_opt(2000, 1, 1).unwrap().and_hms_opt(12, 0, 0).unwrap();
+    let datetime = DateTime::<Utc>::from_utc(naivedatetime, Utc);
+    let mut datetime_sub = datetime;
+
+    datetime_sub -= Duration::from_secs(60 * 90);
+    assert_eq!(datetime_sub, datetime - Duration::from_secs(60 * 90));
+
+    let timezone = FixedOffset::east_opt(60 * 60).unwrap();
+    let datetime = datetime.with_timezone(&timezone);
+    let datetime_sub = datetime_sub.with_timezone(&timezone);
+
+    assert_eq!(datetime_sub, datetime - Duration::from_secs(60 * 90));
+
+    let timezone = FixedOffset::west_opt(2 * 60 * 60).unwrap();
+    let datetime = datetime.with_timezone(&timezone);
+    let datetime_sub = datetime_sub.with_timezone(&timezone);
+
+    assert_eq!(datetime_sub, datetime - Duration::from_secs(60 * 90));
+}
+
+#[test]
 #[cfg(feature = "clock")]
 fn test_datetime_sub_assign_local() {
     let naivedatetime = NaiveDate::from_ymd_opt(2022, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
@@ -600,5 +750,20 @@ fn test_datetime_sub_assign_local() {
     for i in 1..=365 {
         datetime_sub -= OldTimeDelta::days(1);
         assert_eq!(datetime_sub, datetime - OldTimeDelta::days(i))
+    }
+}
+
+#[test]
+#[cfg(feature = "clock")]
+fn test_datetime_sub_assign_local_duration() {
+    let naivedatetime = NaiveDate::from_ymd_opt(2022, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap();
+
+    let datetime = Local.from_utc_datetime(&naivedatetime);
+    let mut datetime_sub = Local.from_utc_datetime(&naivedatetime);
+
+    // ensure we cross a DST transition
+    for i in 1..=365 {
+        datetime_sub -= Duration::from_secs(24 * 60 * 60);
+        assert_eq!(datetime_sub, datetime - Duration::from_secs(24 * 60 * 60 * i))
     }
 }
